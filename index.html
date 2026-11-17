@@ -186,6 +186,25 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke
 #dlg p{margin:0;font-size:14.5px;line-height:1.6;color:rgba(244,241,234,.85);white-space:pre-line}
 #dlg .btns{margin-top:18px}
 #special:not(:empty)~#melds{top:340px}
+
+/* 화면이 짧은 폰: 위쪽(자리·덱)을 작게 줄여서 등록 카드 자리 확보 */
+#arena.cmp .seat .av{--s:44px}
+#arena.cmp .seat.L,#arena.cmp .seat.R{top:20px}
+#arena.cmp .seat.T{top:6px}
+#arena.cmp #piles{top:70px;gap:16px}
+#arena.cmp .pile .stk,#arena.cmp .slotE{width:48px;height:72px}
+#arena.cmp .pile .stk .card{--w:48px}
+#arena.cmp .pile .lb{margin-top:4px;padding:2px 8px}
+#arena.cmp #thanksBtn{top:36px;width:58px;height:58px;font-size:15px}
+#arena.cmp #banner{top:174px}
+#arena.cmp #banner span{padding:5px 14px}
+#arena.cmp #special{top:206px}
+#arena.cmp #melds{top:208px}
+#arena.cmp #special:not(:empty)~#melds{top:250px}
+#arena.cmp #melds .hint{font-size:13px;line-height:1.5}
+body.shortH #myRow{padding-bottom:6px}
+body.shortH #acts{padding-bottom:6px}
+body.shortH #acts .btn{height:44px}
 #melds .hint{margin:auto;font-size:13px;color:var(--mut);text-align:center;line-height:1.7}
 .meld{position:relative;display:flex;padding:6px 7px 6px 11px;border-radius:12px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.06);transition:.15s}
 .meld .dot{position:absolute;left:4px;top:7px;bottom:7px;width:3px;border-radius:2px;background:var(--oc)}
@@ -1124,11 +1143,11 @@ function syncOrder(){
 }
 function doSort(){const k=sortMode==='suit'?(c=>SUIT_ORD[c.s]*20+c.r):(c=>c.r*10+SUIT_ORD[c.s]);const map=Object.fromEntries(V.hand.map(c=>[c.id,c]));order.sort((a,b)=>k(map[a])-k(map[b]))}
 let HL={cw:80,step:40,off:0,n:0};
-function handLayout(n){const el=$('hand'),W=el.clientWidth||370,cw=Math.min(94,Math.max(58,W*.24));const step=n>1?Math.min(cw*.88,(W-cw-44)/(n-1)):0;return{cw,step,off:(W-(cw+(n-1)*step))/2,n}}
+function handLayout(n){const el=$('hand'),W=el.clientWidth||370,cw=Math.min(innerHeight<760?Math.max(66,(innerHeight-540)*.33):94,Math.max(58,W*.24));const step=n>1?Math.min(cw*.88,(W-cw-44)/(n-1)):0;return{cw,step,off:(W-(cw+(n-1)*step))/2,n}}
 function cardPos(i,n,s){const mid=(n-1)/2,rot=(i-mid)*2,dy=(i-mid)*(i-mid)*.8;return`translateY(${dy-(s?24:0)}px) rotate(${rot}deg)`}
 function renderHand(){
  syncOrder();const map=Object.fromEntries(V.hand.map(c=>[c.id,c])),el=$('hand'),n=order.length;
- HL=handLayout(n);el.style.height=(HL.cw*1.5+24)+'px';
+ HL=handLayout(n);el.style.height=(HL.cw*1.5+24)+'px';typeof fitLayout==='function'&&fitLayout();
  el.innerHTML=order.map((id,i)=>{const c=map[id],s=sel.has(id);
   return cardHTML(c,`${s?'sel':''} ${id===V.taken?'tk':''}`,`--w:${HL.cw}px;left:${HL.off+i*HL.step}px;transform:${cardPos(i,n,s)};z-index:${i}`)}).join('');
  if(dealing)el.querySelectorAll('.card').forEach(e=>e.style.opacity='0');
@@ -1531,7 +1550,8 @@ $('acts').onclick=e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)ret
  else if(a==='emo')toggleEmo();
  else sendAction({type:a,ids:[...sel]})};
 $('modal').onclick=e=>{if(e.target.id==='modal')closeModal()};
-addEventListener('resize',()=>{if(V&&V.phase!=='lobby')renderHand()});
+function fitLayout(){document.body.classList.toggle('shortH',innerHeight<760);const a=$('arena');if(a&&a.clientHeight)a.classList.toggle('cmp',a.clientHeight<470)}
+addEventListener('resize',()=>{fitLayout();if(V&&V.phase!=='lobby')renderHand();fitLayout()});
 document.addEventListener('gesturestart',e=>e.preventDefault());
 if('serviceWorker' in navigator&&location.protocol==='https:'&&!/appassets/.test(location.host))navigator.serviceWorker.register('sw.js').catch(()=>{});
 window.onAndroidBack=()=>{if($('emoPop')){$('emoPop').remove();return true}if(!$('modal').classList.contains('hidden')){closeModal();return true}if(V){showMenu();return true}return false};
