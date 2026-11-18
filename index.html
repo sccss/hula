@@ -187,21 +187,32 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke
 #dlg .btns{margin-top:18px}
 #special:not(:empty)~#melds{top:340px}
 
-/* 화면이 짧은 폰: 위쪽(자리·덱)을 작게 줄여서 등록 카드 자리 확보 */
-#arena.cmp .seat .av{--s:44px}
+/* 화면 크기에 맞춰 fitLayout()이 --pt(덱 위치) --pcw(덱 카드 폭) --bt --st --mt --mt2 를 정함 */
+#arena.cmp .seat .av{--s:46px}
 #arena.cmp .seat.L,#arena.cmp .seat.R{top:20px}
 #arena.cmp .seat.T{top:6px}
-#arena.cmp #piles{top:70px;gap:16px}
-#arena.cmp .pile .stk,#arena.cmp .slotE{width:48px;height:72px}
-#arena.cmp .pile .stk .card{--w:48px}
-#arena.cmp .pile .lb{margin-top:4px;padding:2px 8px}
-#arena.cmp #thanksBtn{top:36px;width:58px;height:58px;font-size:15px}
-#arena.cmp #banner{top:174px}
-#arena.cmp #banner span{padding:5px 14px}
-#arena.cmp #special{top:206px}
-#arena.cmp #melds{top:208px}
-#arena.cmp #special:not(:empty)~#melds{top:250px}
-#arena.cmp #melds .hint{font-size:13px;line-height:1.5}
+#piles{top:var(--pt,112px)!important;left:6px!important;right:auto!important;width:var(--colw,76px);flex-direction:column;justify-content:flex-start!important;align-items:center!important;gap:8px!important}
+#banner,#special{left:var(--ml,0px)!important;right:4px!important}
+#melds{left:var(--ml,14px)!important;right:12px!important}
+.pile .lb{white-space:nowrap}
+.pile .stk,#piles .slotE{width:var(--pcw,66px)!important;height:calc(var(--pcw,66px)*1.5)!important}
+.pile .stk .card{--w:var(--pcw,66px)!important}
+#thanksBtn{top:calc(var(--pcw,66px)*.75)!important}
+#banner{top:var(--bt,250px)!important}
+#special{top:var(--st,288px)!important}
+#melds{top:var(--mt,292px)!important}
+#special:not(:empty)~#melds{top:var(--mt2,340px)!important}
+.meld .card{--w:calc(54px*var(--fz,1))!important;margin-right:calc(-33px*var(--fz,1))!important}
+.meld .card:last-child{margin-right:0!important}
+.pile .lb{margin-top:5px!important}
+#arena.cmp #banner{display:none}
+.gtop .mid{min-width:0}
+#gInfo{max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;display:block;line-height:28px}
+body.cmpT #gInfo{font-size:13.5px;font-weight:700}
+body.cmpT #gInfo.mine{background:var(--gold);border-color:transparent;color:var(--ink);font-weight:800}
+.meld{padding:calc(6px*var(--fz,1)) calc(7px*var(--fz,1)) calc(6px*var(--fz,1)) calc(11px*var(--fz,1))}
+#mw{gap:calc(10px*var(--fz,1))!important}
+#arena.cmp #melds{left:8px;right:8px}
 body.shortH #myRow{padding-bottom:6px}
 body.shortH #acts{padding-bottom:6px}
 body.shortH #acts .btn{height:44px}
@@ -597,7 +608,8 @@ function startRound(G){
  G.players.forEach(p=>{p.hand=[];p.registered=false;p.afk=false;p.turns=0});
  for(let k=0;k<7;k++)for(const p of G.players)p.hand.push(G.deck.pop());
  G.discard.push(G.deck.pop());
- G.phase='play';G.round++;G.turn=G.starter%G.players.length;
+ if(!G.round)G.starter=Math.floor(Math.random()*G.players.length);
+ G.ready={};G.phase='play';G.round++;G.turn=G.starter%G.players.length;
  G.dealUntil=Date.now()+dealMs(G.players.length);
  addLog(G,`${G.round}판 시작 — ${G.players[G.turn].name} 먼저`);
  beginTurn(G);setEv(G,{type:'deal',seat:G.turn});
@@ -623,6 +635,7 @@ function turnOptions(players,me,hand,step,isTurn){
 function pick(hand,ids){const out=[];for(const id of ids){const c=hand.find(x=>x.id===id);if(!c||out.includes(c))return null;out.push(c)}return out}
 function removeFrom(hand,cs){for(const c of cs)hand.splice(hand.indexOf(c),1)}
 function act(G,seat,a){
+ if(a.type==='ready'){if(G.phase!=='end')return'';G.ready=G.ready||{};G.ready[seat]=!G.ready[seat];return null}
  if(G.phase!=='play')return'게임 중이 아니에요';
  const p=G.players[seat];
  if(a.type==='thanks'){
@@ -641,8 +654,8 @@ function act(G,seat,a){
  if(a.type==='stop'||a.type==='blast'){
   const o=turnOptions(G.players,seat,p.hand,G.step,true);
   if(a.type==='stop'){if(!o.stop)return'모두 등록한 뒤 내 차례 시작 때만 스톱할 수 있어요';endRound(G,seat,'stop');return null}
-  if(!(o.low||o.high||o.seven4))return'소폭/대폭 조건이 아니에요';
-  endRound(G,seat,'blast',o.seven4?'세븐 포카드':o.low?'소폭':'대폭');return null;
+  if(!(o.low||o.high||o.seven4))return'로우카드/하이카드 조건이 아니에요';
+  endRound(G,seat,'blast',o.seven4?'세븐 포카드':o.low?'로우카드':'하이카드');return null;
  }
  if(a.type==='draw'){
   if(G.step!=='draw')return'이미 카드를 가져왔어요';
@@ -724,18 +737,18 @@ function endRound(G,winner,kind,label){
  if(payer!=null){losers.forEach(r=>r.delta=0);rows[payer].delta=-tot}else losers.forEach(r=>r.delta=-r.pay);
  rows[winner].delta=tot;
  rows.forEach(r=>{G.players[r.seat].score+=r.delta;r.total2=G.players[r.seat].score});
- G.result={winner,hula,kind,label,title,rows,round:G.round};G.phase='end';G.starter=winner;G.deadline=0;G.ty=null;G.step='end';
+ G.result={winner,hula,kind,label,title,rows,round:G.round};G.phase='end';G.ready={};G.starter=winner;G.deadline=0;G.ty=null;G.step='end';
  addLog(G,title);
 }
 function viewFor(G,seat){
- const pl=G.players[seat]||{};let ev=G.ev||null;
+ const pl=G.players[seat]||{};const ready=G.phase==='end'?G.players.map((p,i)=>!!(i===0||p.bot||p.online===false||(G.ready&&G.ready[i]))):null;let ev=G.ev||null;
  if(ev&&ev.type==='draw'&&ev.seat!==seat)ev={...ev,card:null};
  return{phase:G.phase,mode:G.mode,me:seat,round:G.round,code:ROOM,lastDisc:G.lastDisc,timer:!!(G.timer&&G.turnMs),turnMs:G.turnMs||0,turnNo:G.turnNo,left:G.deadline?Math.max(0,G.deadline-Date.now()):0,
   players:G.players.map(p=>({name:p.name,avatar:p.avatar,count:p.hand?p.hand.length:0,registered:!!p.registered,score:p.score,bot:!!p.bot,level:p.level,online:p.online!==false,turns:p.turns||0})),
   hand:pl.hand||[],deck:G.deck?G.deck.length:0,top:G.discard&&G.discard.length?G.discard[G.discard.length-1]:null,
   discN:G.discard?G.discard.length:0,melds:G.melds||[],turn:G.turn,step:G.step,taken:seat===G.turn?G.taken:null,
   ty:G.ty?{card:G.ty.card,from:G.ty.from,left:Math.max(0,G.ty.until-Date.now())}:null,
-  dealLeft:Math.max(0,(G.dealUntil||0)-Date.now()),log:G.log.slice(-3),result:G.result,ev,room:G.room?{name:G.room.name,pub:!!G.room.pub,locked:!!G.room.pw}:null,discards:(G.discard||[]).map(c=>c.id)};
+  dealLeft:Math.max(0,(G.dealUntil||0)-Date.now()),log:G.log.slice(-3),result:G.result,ready,ev,room:G.room?{name:G.room.name,pub:!!G.room.pub,locked:!!G.room.pw}:null};
 }
 
 /* ================= 컴퓨터 AI ================= */
@@ -811,7 +824,7 @@ function wantStop(G,seat,mult){
  const others=G.players.filter((_,i)=>i!==seat);
  return others.every(o=>me<o.hand.length*mult);
 }
-// 소폭(15 이하)·대폭(83 이상) 노리기: 등록 전이고 손패 7장이 목표에 가까우면 등록하지 않고 그쪽으로 버림
+// 로우카드(15 이하)·하이카드(83 이상) 노리기: 등록 전이고 손패 7장이 목표에 가까우면 등록하지 않고 그쪽으로 버림
 const BLAST={on:true,lo:18,hi:80};
 function blastPlan(G,seat){
  if(!BLAST.on)return null;const p=G.players[seat];
@@ -921,7 +934,7 @@ function tick(){
 }
 function startTick(){clearInterval(hostTick);hostTick=setInterval(tick,AUTO.fast?2:120)}
 function sendAction(a){
- if(dealing&&a.type!=='thanks')return;
+ if(dealing&&a.type!=='thanks'&&a.type!=='ready')return;
  if(MODE==='client'){if(conn&&conn.open)conn.send({t:'act',a});else toast('연결이 끊겼어요');return}
  const e=act(G,MY,a);if(e){toast(e);snd('err')}hostUpdate();
 }
@@ -1080,8 +1093,9 @@ function startRing(el){
 function myOptions(){return turnOptions(V.players,V.me,V.hand,V.step,V.phase==='play'&&V.turn===V.me)}
 function canTakeTop(){return V.top&&V.lastDisc!=null&&usePlan(V.top,V.hand)}
 function renderGame(){
+ refreshEnd();
  const n=V.players.length,me=V.me,play=V.phase==='play',myTurn=play&&V.turn===me&&V.step!=='ty';
- $('gInfo').textContent=`${V.round}판 · ${MODES[V.mode].t}`+(V.code?` · ${V.code}`:'');
+ setTopInfo();
  let sh='';
  for(let k=1;k<n;k++){
   const i=(me+k)%n,p=V.players[i],pos=seatPos(k,n-1),turn=play&&V.turn===i&&V.step!=='ty';
@@ -1101,7 +1115,7 @@ function renderGame(){
  $('deckN').textContent=`덱 ${V.deck}`;
  $('discard').querySelector('.stk').innerHTML=(V.top?cardHTML(V.top,'','transform:rotate(4deg)'):'<div class="slotE"></div>')+(V.ty?`<div class="tybar"><i id="tyBar"></i></div>`:'');
  if(V.ty){const left=Math.max(0,V.ty.left-(V.recv?Date.now()-V.recv:0));$('tyBar').animate([{transform:`scaleX(${left/TY_MS})`},{transform:'scaleX(0)'}],{duration:left,fill:'forwards'})}
- $('discN').textContent=V.ty?'땡큐 대기':`버린 카드 ${V.discN} ›`;
+ $('discN').textContent=V.ty?'땡큐 대기':`버린 카드 ${V.discN}`;
  const canThanks=play&&!dealing&&((V.ty&&V.ty.from!==me&&usePlan(V.ty.card,V.hand))||(V.mode==='classic'&&canDraw&&canTakeTop()));
  $('thanksBtn').classList.toggle('hidden',!canThanks);
  let bt='';
@@ -1110,17 +1124,17 @@ function renderGame(){
  else if(V.step==='ty')bt=(myDraw()?'땡큐하거나 덱에서 바로 가져오세요 · ':'')+`${V.players[V.ty.from].name} · ${cname(V.ty.card)} 버림`;
  else if(myTurn)bt=V.step==='draw'?'내 차례 · 덱에서 한 장 가져오세요':V.taken?'가져온 카드(●)로 새 조합을 등록하세요':'등록·붙이기 후 한 장 버리기';
  else bt=`${V.players[V.turn].name} 차례`;
- $('banner').querySelector('span').textContent=bt;$('banner').classList.toggle('mine',myTurn&&!dealing);
+ $('banner').querySelector('span').textContent=bt;$('banner').classList.toggle('mine',myTurn&&!dealing);setTopInfo();
  const o=dealing?{}:myOptions();let sp='';
  if(o.seven4)sp+=`<button class="btn blue sm" data-x="blast">세븐 포카드</button>`;
- else if(o.low)sp+=`<button class="btn blue sm" data-x="blast">소폭 · ${handSum(V.hand)}점</button>`;
- else if(o.high)sp+=`<button class="btn blue sm" data-x="blast">대폭 · ${handSum(V.hand)}점</button>`;
+ else if(o.low)sp+=`<button class="btn blue sm" data-x="blast">로우카드 · ${handSum(V.hand)}점</button>`;
+ else if(o.high)sp+=`<button class="btn blue sm" data-x="blast">하이카드 · ${handSum(V.hand)}점</button>`;
  if(o.stop)sp+=`<button class="btn red sm" data-x="stop">스톱 · ${stopSum(V.hand)}점</button>`;
  $('special').innerHTML=sp;
  // 선택한 카드를 붙일 수 있는 조합만 빛나게
  const selCards=V.hand.filter(c=>sel.has(c.id)&&c.id!==V.taken);
  const canAtt=m=>myTurn&&V.step==='act'&&V.players[me].registered&&selCards.length===sel.size&&selCards.length>0&&!!meldKind([...m.cards,...selCards]);
- $('mw').innerHTML=V.melds.length?V.melds.map(m=>`<div class="meld ${canAtt(m)?'tg':''}" data-meld="${m.id}" style="--oc:${OC[m.owner%4]}"><i class="dot"></i>${m.cards.map(c=>cardHTML(c)).join('')}</div>`).join('')
+ queueMicrotask(fitLayout);$('mw').innerHTML=V.melds.length?V.melds.map(m=>`<div class="meld ${canAtt(m)?'tg':''}" data-meld="${m.id}" style="--oc:${OC[m.owner%4]}"><i class="dot"></i>${m.cards.map(c=>cardHTML(c)).join('')}</div>`).join('')
   :'<div class="hint">카드를 <b>끌어서</b> 여기 놓으면 등록<br>조합 위에 놓으면 붙이기 · 버린 카드 자리에 놓으면 버리기</div>';
  const mp=V.players[me];
  $('myRow').innerHTML=`${myTurn&&V.timer?ringHTML('ringMe'):''}${avHTML(mp,'avMe')}<div><div class="nm">${esc(mp.name)}</div>${gold(mp.score)}</div>
@@ -1320,15 +1334,29 @@ function showResult(){
   h+=`<div class="rrow ${r.seat===Rr.winner?'win':''}">${avHTML(r)}<div class="nm">${esc(r.name)}${r.why.length?`<em>${r.why.join(' · ')}</em>`:''}</div>
    <div class="h">${r.hand.map(c=>cardHTML(c)).join('')}<small>${r.hand.length?r.total+'점':'다 냄'}</small></div><div class="dl ${r.delta>=0?'plus':'minus'}">${r.delta>0?'+':''}${r.delta}</div></div>`;
  }
- h+=`<div class="btns"><button class="btn glass" id="mClose">닫기</button>${MODE!=='client'?'<button class="btn pri" id="mNext">다음 판</button>':''}</div>`;
- if(MODE==='client')h+=`<p style="text-align:center;margin:10px 0 0;font-size:13px;color:var(--mut)">방장이 다음 판을 시작해요</p>`;
- openModal(h);$('mClose').onclick=closeModal;if($('mNext'))$('mNext').onclick=nextRound;
+ h+=`<div class="btns"><button class="btn glass" id="mClose">닫기</button><span id="endBtns" style="display:contents">${endBtns()}</span></div><p id="rdyTxt" style="text-align:center;margin:10px 0 0;font-size:13px;color:var(--mut)">${rdyTxt()}</p>`;
+ openModal(h);$('mClose').onclick=closeModal;bindEnd();
 }
-function nextRound(){closeModal();sel.clear();startRound(G);hostUpdate()}
+// 다음 판: 방장 외 사람들이 모두 '준비'를 눌러야 방장이 시작 가능 (컴퓨터·끊긴 사람은 자동 준비)
+function endBtns(){
+ if(!V||V.phase!=='end')return'';
+ if(MODE==='client'){const r=V.ready&&V.ready[V.me];return `<button class="btn ${r?'glass':'pri'}" id="mReady">${r?'준비 취소':'준비'}</button>`}
+ const t=V.players.length,n=V.ready?V.ready.filter(x=>x).length:t,all=n===t;
+ return `<button class="btn pri" id="mNext" ${all?'':'disabled'}>${all?'다음 판':`준비 기다리는 중 ${n}/${t}`}</button>`;
+}
+function rdyTxt(){
+ if(!V||V.phase!=='end'||!V.ready)return'';
+ const wait=V.players.filter((p,i)=>!V.ready[i]).map(p=>esc(p.name));
+ if(MODE==='client')return V.ready[V.me]?(wait.length?`${wait.join(', ')} 준비 기다리는 중`:'방장이 다음 판을 시작해요'):'준비를 누르면 방장이 다음 판을 시작할 수 있어요';
+ return wait.length?`${wait.join(', ')} 준비 기다리는 중`:(MODE==='host'?'모두 준비 완료!':'');
+}
+function bindEnd(){if($('mNext'))$('mNext').onclick=nextRound;if($('mReady'))$('mReady').onclick=()=>sendAction({type:'ready'})}
+function refreshEnd(){const b=$('endBtns');if(!b)return;const h=endBtns();if(b.innerHTML!==h){b.innerHTML=h;bindEnd()}const t=$('rdyTxt');if(t)t.innerHTML=rdyTxt()}
+function nextRound(){if(V&&V.ready&&V.ready.some(x=>!x))return toast('아직 준비 안 한 사람이 있어요');closeModal();sel.clear();startRound(G);hostUpdate()}
 function showScores(){
  let h=`<h2>점수판</h2><table class="sc">`+V.players.map((p,i)=>({p,i})).sort((a,b)=>b.p.score-a.p.score).map(({p},k)=>`<tr><td style="width:28px;font-family:var(--fd);color:${k?'var(--mut)':'var(--gold)'}">${k+1}</td><td><div style="display:flex;align-items:center;gap:10px">${avHTML(p).replace('class="av','style="--s:34px" class="av')}${esc(p.name)}</div></td><td>${gold(p.score)}</td></tr>`).join('')+`</table>`;
- h+=`<div class="btns"><button class="btn glass" id="mClose">닫기</button>${V.phase==='end'&&MODE!=='client'?'<button class="btn pri" id="mNext">다음 판</button>':''}</div>`;
- openModal(h);$('mClose').onclick=closeModal;if($('mNext'))$('mNext').onclick=nextRound;
+ h+=`<div class="btns"><button class="btn glass" id="mClose">닫기</button>${V.phase==='end'?`<span id="endBtns" style="display:contents">${endBtns()}</span>`:''}</div>${V.phase==='end'?`<p id="rdyTxt" style="text-align:center;margin:10px 0 0;font-size:13px;color:var(--mut)">${rdyTxt()}</p>`:''}`;
+ openModal(h);$('mClose').onclick=closeModal;bindEnd();
 }
 const mc=ids=>`<div class="mini">${ids.split(' ').map(t=>t==='+'?'<b class="pl">+</b>':t==='>'?'<b class="pl">→</b>':t==='back'?backHTML():cardHTML(ALL.find(c=>c.id===t))).join('')}</div>`;
 function rulesHTML(){return `<h2>훌라 배우기</h2>
@@ -1349,7 +1377,7 @@ function rulesHTML(){return `<h2>훌라 배우기</h2>
 <li><b>전투훌라</b>: 3명 이상일 때 버려진 카드를 누구든 먼저 땡큐할 수 있고, 그 사람부터 차례가 이어져요. <b>정통훌라</b>는 바로 다음 사람만 땡큐해요.</li>
 <li>땡큐한 카드로 그 차례에 다 내서 이기면 버린 사람이 혼자 다 내요(땡큐박).</li>
 <li>스톱했는데 나보다 낮거나 같은 사람이 있으면 내가 혼자 다 내요(스톱박).</li>
-<li>등록 전, 첫 차례가 아닐 때 7장 합이 15 이하(소폭)나 83 이상(대폭)이면 바로 승리. 7을 4장 모아도 승리.</li>
+<li>등록 전, 첫 차례가 아닐 때 7장 합이 15 이하(로우카드)나 83 이상(하이카드)이면 바로 승리. 7을 4장 모아도 승리.</li>
 <li>진 사람은 점수 순서대로 10·20·40·80골드. 한 번도 등록 못 하면 ×2, 손에 남은 7은 1장마다 ×2.</li>
 <li>덱이 떨어지면 점수가 가장 낮은 사람이 승리. 멀티는 한 차례 45초.</li></ul></details>
 <div class="btns"><button class="btn pri" id="mClose">알겠어요</button></div>`}
@@ -1449,7 +1477,7 @@ function snd(k){
 $('nameIn').value=ls.get('hulaName','');$('nameIn').oninput=e=>{ls.set('hulaName',e.target.value)};$('nameIn').onchange=renderTitle;
 $('pAv').onclick=showAvPick;
 $('btnSnd').onclick=()=>{SOUND=!SOUND;ls.set('hulaSound',SOUND?'1':'0');$('btnSnd').style.opacity=SOUND?1:.45;toast(SOUND?'소리 켬':'소리 끔')};$('btnSnd').style.opacity=SOUND?1:.45;
-$('btnSolo').onclick=showSoloSetup;$('btnHost').onclick=showCreateRoom;$('btnMulti').onclick=()=>{menuScreen='multi';render()};$('btnMBack').onclick=()=>{menuScreen='title';render()};$('btnReList').onclick=refreshRooms;$('btnStats').onclick=()=>showStats();$('btnJoin').onclick=()=>joinRoom();$('discN').onclick=e=>{e.stopPropagation();showDiscards()};$('btnRules').onclick=showRules;
+$('btnSolo').onclick=showSoloSetup;$('btnHost').onclick=showCreateRoom;$('btnMulti').onclick=()=>{menuScreen='multi';render()};$('btnMBack').onclick=()=>{menuScreen='title';render()};$('btnReList').onclick=refreshRooms;$('btnStats').onclick=()=>showStats();$('btnJoin').onclick=()=>joinRoom();$('btnRules').onclick=showRules;
 $('btnLeave').onclick=leave;
 $('btnCopy').onclick=()=>{try{navigator.clipboard.writeText(V.code);toast('방 코드를 복사했어요')}catch(e){}};
 $('roomTime').onclick=e=>{const b=e.target.closest('[data-t]');if(!b||MODE==='client'||!G)return;G.turnMs=+b.dataset.t;ls.set('hulaTurn',String(G.turnMs));hostUpdate()};
@@ -1515,7 +1543,7 @@ function showStats(tab='all'){
  const t=tab==='all'?sum:S[tab],rate=t.played?Math.round(t.wins/t.played*100):0;
  openModal(`<h2>내 전적</h2><div class="seg" id="stTab">${[['all','전체'],['solo','컴퓨터 대전'],['multi','멀티']].map(([k,l])=>`<button data-t="${k}" class="${k===tab?'on':''}">${l}</button>`).join('')}</div>
   <div class="stg"><div class="st big"><div><b>${rate}%</b><span>승률</span></div><div><b>${t.wins}</b><span>승리</span></div><div><b>${t.played}</b><span>판 수</span></div></div>
-  <div class="st"><b>${t.hula}</b><span>훌라</span></div><div class="st"><b>${t.thanks}</b><span>땡큐</span></div><div class="st"><b>${t.blast}</b><span>소폭·대폭</span></div>
+  <div class="st"><b>${t.hula}</b><span>훌라</span></div><div class="st"><b>${t.thanks}</b><span>땡큐</span></div><div class="st"><b>${t.blast}</b><span>로우카드·하이카드</span></div>
   <div class="st"><b>${t.stopOk}</b><span>스톱 성공</span></div><div class="st"><b>${t.stopFail}</b><span>스톱박</span></div><div class="st"><b>${t.best>0?'+'+t.best:t.best}</b><span>최고 획득</span></div>
   <div class="st big"><div><b style="color:${t.gold<0?'#FF9EA1':'var(--gold)'}">${t.gold>0?'+':''}${t.gold}</b><span>누적 골드</span></div></div></div>
   <div class="btns"><button class="btn glass" id="stReset">기록 지우기</button><button class="btn pri" id="mClose">닫기</button></div>`);
@@ -1550,7 +1578,32 @@ $('acts').onclick=e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)ret
  else if(a==='emo')toggleEmo();
  else sendAction({type:a,ids:[...sel]})};
 $('modal').onclick=e=>{if(e.target.id==='modal')closeModal()};
-function fitLayout(){document.body.classList.toggle('shortH',innerHeight<760);const a=$('arena');if(a&&a.clientHeight)a.classList.toggle('cmp',a.clientHeight<470)}
+function setTopInfo(){
+ const g=$('gInfo');if(!g||!V)return;const cmp=document.body.classList.contains('cmpT');const b=$('banner');
+ const t=cmp&&V.phase==='play'?b.querySelector('span').textContent:`${V.round}판 · ${MODES[V.mode].t}`+(V.code?` · ${V.code}`:'');
+ if(g.textContent!==t)g.textContent=t;g.classList.toggle('mine',cmp&&b.classList.contains('mine'));
+}
+function fitLayout(){
+ document.body.classList.toggle('shortH',innerHeight<760);const a=$('arena');if(!a||!a.clientHeight)return;
+ const H=a.clientHeight,cmp=H<500;a.classList.toggle('cmp',cmp);document.body.classList.toggle('cmpT',cmp);
+ const ar=a.getBoundingClientRect(),bot=sel=>{const e=a.querySelector(sel);return e?Math.round(e.getBoundingClientRect().bottom-ar.top):0};
+ // 덱·버린 카드는 왼쪽 세로 줄(왼쪽 상대 자리 아래), 가운데~오른쪽은 등록 카드
+ const pt=Math.max(44,bot('.seat.L')+6);
+ const pcw=Math.round(Math.max(44,Math.min(66,(H-8-pt-2*28-8)/3)));
+ const colw=Math.max(pcw,76),ml=6+colw+8;
+ const tb=Math.max(bot('.seat.T'),bot('.seat.R'),bot('.seat.L')*(cmp?1:1),8)+4;
+ const bt=tb,mt=cmp?tb:tb+38;
+ const v={'--pt':pt,'--pcw':pcw,'--colw':colw,'--ml':ml,'--bt':bt,'--st':mt,'--mt':mt,'--mt2':mt+46};
+ for(const k in v)a.style.setProperty(k,v[k]+'px');
+ if(window.V&&V.phase&&V.phase!=='lobby')setTopInfo();
+ fitMelds();
+}
+// 등록 카드가 자리에 다 들어가도록 크기 자동 조절(1.2배~0.6배)
+function fitMelds(){
+ const box=$('melds'),mw=$('mw');if(!box||!box.clientHeight)return;
+ const n=mw.querySelectorAll('.meld').length;const pc=parseFloat($('arena').style.getPropertyValue('--pcw'))||66;let fz=Math.min(1.15,pc/54);mw.style.setProperty('--fz',fz);if(!n)return;
+ for(let i=0;i<10&&box.scrollHeight>box.clientHeight+2&&fz>.6;i++){fz=Math.max(.6,fz-.06);mw.style.setProperty('--fz',fz)}
+}
 addEventListener('resize',()=>{fitLayout();if(V&&V.phase!=='lobby')renderHand();fitLayout()});
 document.addEventListener('gesturestart',e=>e.preventDefault());
 if('serviceWorker' in navigator&&location.protocol==='https:'&&!/appassets/.test(location.host))navigator.serviceWorker.register('sw.js').catch(()=>{});
